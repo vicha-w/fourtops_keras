@@ -136,10 +136,16 @@ dataframe_loose["jes"] = 0
 
 ### Some extra variables
 def add_variables(dataframe_loose):
+    ### H is the scalar sum of momentum from all jets
+
     dataframe_loose["H"] = dataframe_loose["HT"]/dataframe_loose["HTH"]
+
+    ### pt3HT and pt4HT are the ratio of 3rd or 4th highest jet transverse momentum to the sum of transverse momentum from all jets (HT) respectively
 
     dataframe_loose["pt3HT"] = dataframe_loose["3rdjetpt"]/dataframe_loose["HT"]
     dataframe_loose["pt4HT"] = dataframe_loose["4thjetpt"]/dataframe_loose["HT"]
+
+    ### sphericity - see arXiv.org/pdf/1702.06164 on page 5
 
     sphericity = []
     for event in dataframe_loose["jetvec"]:
@@ -164,6 +170,8 @@ def add_variables(dataframe_loose):
 
     def invariant_mass(pt1, eta1, phi1, E1, pt2, eta2, phi2, E2):
         return math.sqrt((E1+E2)**2 - (pt1*math.sinh(eta1) + pt2*math.sinh(eta2))**2 - pt1**2 - pt2**2 - 2*pt1*pt2*math.cos(phi1-phi2))
+
+    ### invmass_ij represents an invariant mass of a dijet composed of jets with ith and jth highest CSV discriminant value
 
     invmass_34 = []
     invmass_35 = []
@@ -195,6 +203,8 @@ def add_variables(dataframe_loose):
     csv3rdjetpt = []
     csv4thjetpt = []
 
+    ### csv3rdjetpt and csv4tthjetpt are transverse momentum of jets with third and fourth highest CSV b-tagging discriminant
+
     for event in dataframe_loose["jetvec"]:
         csvjetvec = sorted(event, key=lambda x: -x[3])
         csv3rdjetpt.append(csvjetvec[2][0])
@@ -202,6 +212,8 @@ def add_variables(dataframe_loose):
         
     dataframe_loose["csv3rdjetpt"] = csv3rdjetpt
     dataframe_loose["csv4thjetpt"] = csv4thjetpt
+
+    ### HT2M is the scalar sum of transverse momentum from all jets, minus transverse momentum of two jets with highest CSV b-tagging discrminant (must be greater than 0.8484)
 
     ht2m = []
 
@@ -217,6 +229,8 @@ def add_variables(dataframe_loose):
 
     dataframe_loose["HT2M"] = ht2m
 
+    ### mean_csv is mean csv discriminator value (almost self-explainatory). Jets with CSV value of -10 is considered as 0.
+
     mean_csv = []
     for event in dataframe_loose["jetvec"]:
         csv_sum = 0.
@@ -228,6 +242,8 @@ def add_variables(dataframe_loose):
         mean_csv.append(csv_sum/len(event))
 
     dataframe_loose["mean_csv"] = mean_csv
+
+    ### trijetnth_invmass is the invariant mass of each trijet. -10 if the third trijet is not available.
 
     trijet1st_invmass = []
     for _, event in dataframe_loose.iterrows():
@@ -279,6 +295,8 @@ def add_variables(dataframe_loose):
     def deltaR(eta1, phi1, eta2, phi2):
         return math.sqrt((eta1-eta2)**2 + (phi1-phi2)**2)
 
+    ### angletoplep is the angle between the first most probable trijet and the only lepton
+
     for _, event in dataframe_loose.iterrows():
         trijet_px = 0
         trijet_py = 0
@@ -295,6 +313,8 @@ def add_variables(dataframe_loose):
         angletoplep.append(deltaR(trijet_eta, trijet_phi, event["LeptonEta"], event["leptonphi"]))
 
     dataframe_loose["angletoplep"] = angletoplep
+
+    ### angletop1top2 is the angle between two trijets
 
     angletop1top2 = []
 
@@ -327,6 +347,8 @@ def add_variables(dataframe_loose):
         angletop1top2.append(deltaR(trijet1_eta, trijet1_phi, trijet2_eta, trijet2_phi))
 
     dataframe_loose["angletop1top2"] = angletop1top2
+
+    ### pTRat1st and pTRat2nd are the ratio between transverse momentum from the first and second trijet to the sum of transverse momentum of all jets.
 
     pTRat1st = []
     pTRat2nd = []
@@ -371,64 +393,64 @@ add_variables(dataframe_loose)
 dataframe_loose.to_pickle("fourtops_7J2M_pd.p")
 print("Completed central samples")
 
-print(delimiter)
-print("Starting JESup samples")
-
-df_sig_el_jesup = Toolset.to_pandas(sig_el_craneen_jesup, "Craneen__El", selection_el_loose, branchlist, branchlist_name, isSignal=True, add_weight=True)
-df_bg_el_jesup  = Toolset.to_pandas(bg_el_craneen_jesup,  "Craneen__El", selection_el_loose, branchlist, branchlist_name, isSignal=False, add_weight=True)
-df_sig_mu_jesup = Toolset.to_pandas(sig_mu_craneen_jesup, "Craneen__Mu", selection_mu_loose, branchlist, branchlist_name, isSignal=True, add_weight=True)
-df_bg_mu_jesup  = Toolset.to_pandas(bg_mu_craneen_jesup,  "Craneen__Mu", selection_mu_loose, branchlist, branchlist_name, isSignal=False, add_weight=True)
-
-for trijet in ["trijet1stpass", "trijet2ndpass", "trijet3rdpass"]:
-    df_sig_el_jesup[trijet] = [np.asarray(row[0]) for row in root_numpy.root2array(sig_el_craneen_jesup, "Craneen__El", selection=selection_el_loose, branches=[trijet], step=1)]
-    df_bg_el_jesup[trijet]  = [np.asarray(row[0]) for row in root_numpy.root2array(bg_el_craneen_jesup,  "Craneen__El", selection=selection_el_loose, branches=[trijet], step=1)]
-    df_sig_mu_jesup[trijet] = [np.asarray(row[0]) for row in root_numpy.root2array(sig_mu_craneen_jesup, "Craneen__Mu", selection=selection_mu_loose, branches=[trijet], step=1)]
-    df_bg_mu_jesup[trijet]  = [np.asarray(row[0]) for row in root_numpy.root2array(bg_mu_craneen_jesup,  "Craneen__Mu", selection=selection_mu_loose, branches=[trijet], step=1)]
-
-df_sig_el_jesup["fromMu"] = 0
-df_bg_el_jesup["fromMu"] = 0
-df_sig_mu_jesup["fromMu"] = 1
-df_bg_mu_jesup["fromMu"] = 1
-
-dataframe_jesup = pd.concat([df_sig_el_jesup, df_bg_el_jesup, df_sig_mu_jesup, df_bg_mu_jesup], ignore_index=True)
+# print(delimiter)
+# print("Starting JESup samples")
+# 
+# df_sig_el_jesup = Toolset.to_pandas(sig_el_craneen_jesup, "Craneen__El", selection_el_loose, branchlist, branchlist_name, isSignal=True, add_weight=True)
+# df_bg_el_jesup  = Toolset.to_pandas(bg_el_craneen_jesup,  "Craneen__El", selection_el_loose, branchlist, branchlist_name, isSignal=False, add_weight=True)
+# df_sig_mu_jesup = Toolset.to_pandas(sig_mu_craneen_jesup, "Craneen__Mu", selection_mu_loose, branchlist, branchlist_name, isSignal=True, add_weight=True)
+# df_bg_mu_jesup  = Toolset.to_pandas(bg_mu_craneen_jesup,  "Craneen__Mu", selection_mu_loose, branchlist, branchlist_name, isSignal=False, add_weight=True)
+# 
+# for trijet in ["trijet1stpass", "trijet2ndpass", "trijet3rdpass"]:
+#     df_sig_el_jesup[trijet] = [np.asarray(row[0]) for row in root_numpy.root2array(sig_el_craneen_jesup, "Craneen__El", selection=selection_el_loose, branches=[trijet], step=1)]
+#     df_bg_el_jesup[trijet]  = [np.asarray(row[0]) for row in root_numpy.root2array(bg_el_craneen_jesup,  "Craneen__El", selection=selection_el_loose, branches=[trijet], step=1)]
+#     df_sig_mu_jesup[trijet] = [np.asarray(row[0]) for row in root_numpy.root2array(sig_mu_craneen_jesup, "Craneen__Mu", selection=selection_mu_loose, branches=[trijet], step=1)]
+#     df_bg_mu_jesup[trijet]  = [np.asarray(row[0]) for row in root_numpy.root2array(bg_mu_craneen_jesup,  "Craneen__Mu", selection=selection_mu_loose, branches=[trijet], step=1)]
+# 
+# df_sig_el_jesup["fromMu"] = 0
+# df_bg_el_jesup["fromMu"] = 0
+# df_sig_mu_jesup["fromMu"] = 1
+# df_bg_mu_jesup["fromMu"] = 1
+# 
+# dataframe_jesup = pd.concat([df_sig_el_jesup, df_bg_el_jesup, df_sig_mu_jesup, df_bg_mu_jesup], ignore_index=True)
 #dataframe_jesup = pd.concat([df_bg_el_jesup, df_bg_mu_jesup], ignore_index=True)
 #add_trijet_comb(dataframe_jesup)
-dataframe_jesup["jes"] = 1
-
-add_variables(dataframe_jesup)
-dataframe_jesup.to_pickle("fourtops_7J2M_pd_jesup.p")
-print("Completed JESup samples")
-
-print(delimiter)
-print("Starting JESdown samples")
-
-df_sig_el_jesdown = Toolset.to_pandas(sig_el_craneen_jesdown, "Craneen__El", selection_el_loose, branchlist, branchlist_name, isSignal=True, add_weight=True)
-df_bg_el_jesdown  = Toolset.to_pandas(bg_el_craneen_jesdown, "Craneen__El", selection_el_loose, branchlist, branchlist_name, isSignal=False, add_weight=True)
-df_sig_mu_jesdown = Toolset.to_pandas(sig_mu_craneen_jesdown, "Craneen__Mu", selection_mu_loose, branchlist, branchlist_name, isSignal=True, add_weight=True)
-df_bg_mu_jesdown  = Toolset.to_pandas(bg_mu_craneen_jesdown, "Craneen__Mu", selection_mu_loose, branchlist, branchlist_name, isSignal=False, add_weight=True)
-
-for trijet in ["trijet1stpass", "trijet2ndpass", "trijet3rdpass"]:
-    df_sig_el_jesdown[trijet] = [np.asarray(row[0]) for row in root_numpy.root2array(sig_el_craneen_jesdown, "Craneen__El", selection=selection_el_loose, branches=[trijet], step=1)]
-    df_bg_el_jesdown[trijet]  = [np.asarray(row[0]) for row in root_numpy.root2array(bg_el_craneen_jesdown,  "Craneen__El", selection=selection_el_loose, branches=[trijet], step=1)]
-    df_sig_mu_jesdown[trijet] = [np.asarray(row[0]) for row in root_numpy.root2array(sig_mu_craneen_jesdown, "Craneen__Mu", selection=selection_mu_loose, branches=[trijet], step=1)]
-    df_bg_mu_jesdown[trijet]  = [np.asarray(row[0]) for row in root_numpy.root2array(bg_mu_craneen_jesdown,  "Craneen__Mu", selection=selection_mu_loose, branches=[trijet], step=1)]
-
-df_sig_el_jesdown["fromMu"] = 0
-df_bg_el_jesdown["fromMu"] = 0
-df_sig_mu_jesdown["fromMu"] = 1
-df_bg_mu_jesdown["fromMu"] = 1
-
-dataframe_jesdown = pd.concat([df_sig_el_jesdown, df_bg_el_jesdown, df_sig_mu_jesdown, df_bg_mu_jesdown], ignore_index=True)
+# dataframe_jesup["jes"] = 1
+# 
+# add_variables(dataframe_jesup)
+# dataframe_jesup.to_pickle("fourtops_7J2M_pd_jesup.p")
+# print("Completed JESup samples")
+# 
+# print(delimiter)
+# print("Starting JESdown samples")
+# 
+# df_sig_el_jesdown = Toolset.to_pandas(sig_el_craneen_jesdown, "Craneen__El", selection_el_loose, branchlist, branchlist_name, isSignal=True, add_weight=True)
+# df_bg_el_jesdown  = Toolset.to_pandas(bg_el_craneen_jesdown, "Craneen__El", selection_el_loose, branchlist, branchlist_name, isSignal=False, add_weight=True)
+# df_sig_mu_jesdown = Toolset.to_pandas(sig_mu_craneen_jesdown, "Craneen__Mu", selection_mu_loose, branchlist, branchlist_name, isSignal=True, add_weight=True)
+# df_bg_mu_jesdown  = Toolset.to_pandas(bg_mu_craneen_jesdown, "Craneen__Mu", selection_mu_loose, branchlist, branchlist_name, isSignal=False, add_weight=True)
+# 
+# for trijet in ["trijet1stpass", "trijet2ndpass", "trijet3rdpass"]:
+#     df_sig_el_jesdown[trijet] = [np.asarray(row[0]) for row in root_numpy.root2array(sig_el_craneen_jesdown, "Craneen__El", selection=selection_el_loose, branches=[trijet], step=1)]
+#     df_bg_el_jesdown[trijet]  = [np.asarray(row[0]) for row in root_numpy.root2array(bg_el_craneen_jesdown,  "Craneen__El", selection=selection_el_loose, branches=[trijet], step=1)]
+#     df_sig_mu_jesdown[trijet] = [np.asarray(row[0]) for row in root_numpy.root2array(sig_mu_craneen_jesdown, "Craneen__Mu", selection=selection_mu_loose, branches=[trijet], step=1)]
+#     df_bg_mu_jesdown[trijet]  = [np.asarray(row[0]) for row in root_numpy.root2array(bg_mu_craneen_jesdown,  "Craneen__Mu", selection=selection_mu_loose, branches=[trijet], step=1)]
+# 
+# df_sig_el_jesdown["fromMu"] = 0
+# df_bg_el_jesdown["fromMu"] = 0
+# df_sig_mu_jesdown["fromMu"] = 1
+# df_bg_mu_jesdown["fromMu"] = 1
+# 
+# dataframe_jesdown = pd.concat([df_sig_el_jesdown, df_bg_el_jesdown, df_sig_mu_jesdown, df_bg_mu_jesdown], ignore_index=True)
 #dataframe_jesdown = pd.concat([df_bg_el_jesdown, df_bg_mu_jesdown], ignore_index=True)
 #add_trijet_comb(dataframe_jesdown)
-dataframe_jesdown["jes"] = -1
-
-add_variables(dataframe_jesdown)
-dataframe_jesdown.to_pickle("fourtops_7J2M_pd_jesdown.p")
-
-dataframe_ultimate = pd.concat([dataframe_loose, dataframe_jesup, dataframe_jesdown])
-dataframe_ultimate.to_pickle("fourtops_7J2M_pd_jes.p")
-print("Completed JESdown samples")
+# dataframe_jesdown["jes"] = -1
+# 
+# add_variables(dataframe_jesdown)
+# dataframe_jesdown.to_pickle("fourtops_7J2M_pd_jesdown.p")
+# 
+# dataframe_ultimate = pd.concat([dataframe_loose, dataframe_jesup, dataframe_jesdown])
+# dataframe_ultimate.to_pickle("fourtops_7J2M_pd_jes.p")
+# print("Completed JESdown samples")
 
 # df_sig_el_jerup = Toolset.to_pandas(sig_el_craneen_jerup, "Craneen__El", selection_el_loose, branchlist, branchlist_name, isSignal=True, add_weight=True)
 # df_bg_el_jerup  = Toolset.to_pandas(bg_el_craneen_jerup, "Craneen__El", selection_el_loose, branchlist, branchlist_name, isSignal=False, add_weight=True)
